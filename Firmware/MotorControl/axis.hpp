@@ -108,6 +108,7 @@ public:
             uint16_t default_dir_gpio_pin,
             osPriority thread_priority,
             Encoder& encoder,
+            Encoder& encoder2,
             SensorlessEstimator& sensorless_estimator,
             Controller& controller,
             Motor& motor,
@@ -158,6 +159,7 @@ public:
     Config_t config_;
 
     Encoder& encoder_;
+    Encoder& encoder2_;
     AcimEstimator acim_estimator_;
     SensorlessEstimator& sensorless_estimator_;
     Controller& controller_;
@@ -168,6 +170,8 @@ public:
     Endstop& max_endstop_;
     MechanicalBrake& mechanical_brake_;
     TaskTimes task_times_;
+
+    bool use_2_encoders_ = false;
 
     osThreadId thread_id_ = 0;
     const uint32_t stack_size_ = 2048; // Bytes

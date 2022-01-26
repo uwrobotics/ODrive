@@ -12,6 +12,7 @@ Axis::Axis(int axis_num,
            uint16_t default_dir_gpio_pin,
            osPriority thread_priority,
            Encoder& encoder,
+           Encoder& encoder2,
            SensorlessEstimator& sensorless_estimator,
            Controller& controller,
            Motor& motor,
@@ -24,6 +25,7 @@ Axis::Axis(int axis_num,
       default_dir_gpio_pin_(default_dir_gpio_pin),
       thread_priority_(thread_priority),
       encoder_(encoder),
+      encoder2_(encoder2),
       sensorless_estimator_(sensorless_estimator),
       controller_(controller),
       motor_(motor),
@@ -33,6 +35,7 @@ Axis::Axis(int axis_num,
       mechanical_brake_(mechanical_brake)
 {
     encoder_.axis_ = this;
+    encoder2_.axis_ = this;
     sensorless_estimator_.axis_ = this;
     controller_.axis_ = this;
     motor_.axis_ = this;
@@ -273,10 +276,17 @@ bool Axis::start_closed_loop_control() {
             controller_.vel_estimate_src_.connect_to(&sensorless_estimator_.vel_estimate_);
         } else if (controller_.config_.load_encoder_axis < AXIS_COUNT) {
             Axis* ax = &axes[controller_.config_.load_encoder_axis];
-            controller_.pos_estimate_circular_src_.connect_to(&ax->encoder_.pos_circular_);
             controller_.pos_wrap_src_.connect_to(&controller_.config_.circular_setpoint_range);
-            controller_.pos_estimate_linear_src_.connect_to(&ax->encoder_.pos_estimate_);
-            controller_.vel_estimate_src_.connect_to(&ax->encoder_.vel_estimate_);
+            if (ax->use_2_encoders_) {
+                controller_.pos_estimate_circular_src_.connect_to(&ax->encoder2_.pos_circular_);
+                controller_.pos_estimate_linear_src_.connect_to(&ax->encoder2_.pos_estimate_);
+                controller_.vel_estimate_src_.connect_to(&ax->encoder2_.vel_estimate_);
+            }
+            else {
+                controller_.pos_estimate_circular_src_.connect_to(&ax->encoder_.pos_circular_);
+                controller_.pos_estimate_linear_src_.connect_to(&ax->encoder_.pos_estimate_);
+                controller_.vel_estimate_src_.connect_to(&ax->encoder_.vel_estimate_);
+            }
         } else {
             controller_.pos_estimate_circular_src_.disconnect();
             controller_.pos_estimate_linear_src_.disconnect();
@@ -434,6 +444,7 @@ bool Axis::run_homing() {
 
     // Set the current position to 0.
     encoder_.set_linear_count(0);
+    encoder2_.set_linear_count(0);
     controller_.input_pos_ = 0;
     controller_.input_pos_updated();
 

@@ -88,7 +88,8 @@ static bool config_read_all() {
            config_manager.read(&odrv.config_) &&
            config_manager.read(&odrv.can_.config_);
     for (size_t i = 0; (i < AXIS_COUNT) && success; ++i) {
-        success = config_manager.read(&encoders[i].config_) &&
+        success = config_manager.read(&encoders[i][0].config_) &&
+                  config_manager.read(&encoders[i][1].config_) &&
                   config_manager.read(&axes[i].sensorless_estimator_.config_) &&
                   config_manager.read(&axes[i].controller_.config_) &&
                   config_manager.read(&axes[i].trap_traj_.config_) &&
@@ -108,7 +109,8 @@ static bool config_write_all() {
            config_manager.write(&odrv.config_) &&
            config_manager.write(&odrv.can_.config_);
     for (size_t i = 0; (i < AXIS_COUNT) && success; ++i) {
-        success = config_manager.write(&encoders[i].config_) &&
+        success = config_manager.write(&encoders[i][0].config_) &&
+                  config_manager.write(&encoders[i][1].config_) &&
                   config_manager.write(&axes[i].sensorless_estimator_.config_) &&
                   config_manager.write(&axes[i].controller_.config_) &&
                   config_manager.write(&axes[i].trap_traj_.config_) &&
@@ -127,7 +129,8 @@ static void config_clear_all() {
     odrv.config_ = {};
     odrv.can_.config_ = {};
     for (size_t i = 0; i < AXIS_COUNT; ++i) {
-        encoders[i].config_ = {};
+        encoders[i][0].config_ = {};
+        encoders[i][1].config_ = {};
         axes[i].sensorless_estimator_.config_ = {};
         axes[i].controller_.config_ = {};
         axes[i].controller_.config_.load_encoder_axis = i;
@@ -145,7 +148,8 @@ static void config_clear_all() {
 static bool config_apply_all() {
     bool success = odrv.can_.apply_config();
     for (size_t i = 0; (i < AXIS_COUNT) && success; ++i) {
-        success = encoders[i].apply_config(motors[i].config_.motor_type)
+        success = encoders[i][0].apply_config(motors[i].config_.motor_type)
+               && encoders[i][1].apply_config(motors[i].config_.motor_type)
                && axes[i].controller_.apply_config()
                && axes[i].min_endstop_.apply_config()
                && axes[i].max_endstop_.apply_config()
@@ -219,6 +223,7 @@ bool ODrive::any_error() {
                 || axis.motor_.error_ != Motor::ERROR_NONE
                 || axis.sensorless_estimator_.error_ != SensorlessEstimator::ERROR_NONE
                 || axis.encoder_.error_ != Encoder::ERROR_NONE
+                || axis.encoder2_.error_ != Encoder::ERROR_NONE
                 || axis.controller_.error_ != Controller::ERROR_NONE;
         });
 }
@@ -239,7 +244,9 @@ void ODrive::clear_errors() {
         axis.controller_.error_ = Controller::ERROR_NONE;
         axis.sensorless_estimator_.error_ = SensorlessEstimator::ERROR_NONE;
         axis.encoder_.error_ = Encoder::ERROR_NONE;
+        axis.encoder2_.error_ = Encoder::ERROR_NONE;
         axis.encoder_.spi_error_rate_ = 0.0f;
+        axis.encoder2_.spi_error_rate_ = 0.0f;
         axis.error_ = Axis::ERROR_NONE;
     }
     error_ = ERROR_NONE;
@@ -344,6 +351,7 @@ void ODrive::sampling_cb() {
     MEASURE_TIME(task_times_.sampling) {
         for (auto& axis: axes) {
             axis.encoder_.sample_now();
+            axis.encoder2_.sample_now();
         }
     }
 }
@@ -384,6 +392,11 @@ void ODrive::control_loop_cb(uint32_t timestamp) {
             axis.encoder_.pos_estimate_.reset();
             axis.encoder_.vel_estimate_.reset();
             axis.encoder_.pos_circular_.reset();
+            axis.encoder2_.phase_.reset();
+            axis.encoder2_.phase_vel_.reset();
+            axis.encoder2_.pos_estimate_.reset();
+            axis.encoder2_.vel_estimate_.reset();
+            axis.encoder2_.pos_circular_.reset();
             axis.motor_.Vdq_setpoint_.reset();
             axis.motor_.Idq_setpoint_.reset();
             axis.open_loop_controller_.Idq_setpoint_.reset();
@@ -421,8 +434,10 @@ void ODrive::control_loop_cb(uint32_t timestamp) {
             axis.motor_.motor_thermistor_.update();
         }
 
-        MEASURE_TIME(axis.task_times_.encoder_update)
+        MEASURE_TIME(axis.task_times_.encoder_update) {
             axis.encoder_.update();
+            axis.encoder2_.update();
+        }
     }
 
     // Controller of either axis might use the encoder estimate of the other
@@ -532,6 +547,9 @@ static void rtos_main(void*) {
         if(axis.encoder_.config_.mode & Encoder::MODE_FLAG_ABS){
             axis.encoder_.abs_spi_cs_pin_init();
         }
+        if(axis.encoder2_.config_.mode & Encoder::MODE_FLAG_ABS){
+            axis.encoder2_.abs_spi_cs_pin_init();
+        }
     }
 
     // Try to initialized gate drivers for fault-free startup.
@@ -543,6 +561,7 @@ static void rtos_main(void*) {
 
     for(auto& axis: axes){
         axis.encoder_.setup();
+        axis.encoder2_.setup();
     }
 
     for(auto& axis: axes){
