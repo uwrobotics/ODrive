@@ -594,6 +594,11 @@ void Encoder::abs_spi_cb(bool success) {
             pos = (rawVal >> 2) & 0x3fff;
         } break;
 
+        case MODE_SPI_ABS_AEAT: {
+            uint16_t rawVal = abs_spi_dma_rx_[0];
+            pos = (rawVal >> 3) & 0xfff;
+        } break;
+
         default: {
            set_error(ERROR_UNSUPPORTED_ENCODER_MODE);
            goto done;

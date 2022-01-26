@@ -93,22 +93,42 @@ Motor motors[AXIS_COUNT] = {
     }
 };
 
-Encoder encoders[AXIS_COUNT] = {
+Encoder encoders[AXIS_COUNT][2] = {
     {
-        &htim3, // timer
-        {M0_ENC_Z_GPIO_Port, M0_ENC_Z_Pin}, // index_gpio
-        {M0_ENC_A_GPIO_Port, M0_ENC_A_Pin}, // hallA_gpio
-        {M0_ENC_B_GPIO_Port, M0_ENC_B_Pin}, // hallB_gpio
-        {M0_ENC_Z_GPIO_Port, M0_ENC_Z_Pin}, // hallC_gpio
-        &spi3_arbiter // spi_arbiter
+        {
+            &htim3, // timer
+            {M0_ENC_Z_GPIO_Port, M0_ENC_Z_Pin}, // index_gpio
+            {M0_ENC_A_GPIO_Port, M0_ENC_A_Pin}, // hallA_gpio
+            {M0_ENC_B_GPIO_Port, M0_ENC_B_Pin}, // hallB_gpio
+            {M0_ENC_Z_GPIO_Port, M0_ENC_Z_Pin}, // hallC_gpio
+            &spi3_arbiter // spi_arbiter
+        },
+        {
+            &htim3, // timer
+            {M0_ENC_Z_GPIO_Port, M0_ENC_Z_Pin}, // index_gpio
+            {M0_ENC_A_GPIO_Port, M0_ENC_A_Pin}, // hallA_gpio
+            {M0_ENC_B_GPIO_Port, M0_ENC_B_Pin}, // hallB_gpio
+            {M0_ENC_Z_GPIO_Port, M0_ENC_Z_Pin}, // hallC_gpio
+            &spi3_arbiter // spi_arbiter
+        }
     },
     {
-        &htim4, // timer
-        {M1_ENC_Z_GPIO_Port, M1_ENC_Z_Pin}, // index_gpio
-        {M1_ENC_A_GPIO_Port, M1_ENC_A_Pin}, // hallA_gpio
-        {M1_ENC_B_GPIO_Port, M1_ENC_B_Pin}, // hallB_gpio
-        {M1_ENC_Z_GPIO_Port, M1_ENC_Z_Pin}, // hallC_gpio
-        &spi3_arbiter // spi_arbiter
+        {
+            &htim4, // timer
+            {M1_ENC_Z_GPIO_Port, M1_ENC_Z_Pin}, // index_gpio
+            {M1_ENC_A_GPIO_Port, M1_ENC_A_Pin}, // hallA_gpio
+            {M1_ENC_B_GPIO_Port, M1_ENC_B_Pin}, // hallB_gpio
+            {M1_ENC_Z_GPIO_Port, M1_ENC_Z_Pin}, // hallC_gpio
+            &spi3_arbiter // spi_arbiter
+        },
+        {
+            &htim4, // timer
+            {M0_ENC_Z_GPIO_Port, M0_ENC_Z_Pin}, // index_gpio
+            {M0_ENC_A_GPIO_Port, M0_ENC_A_Pin}, // hallA_gpio
+            {M0_ENC_B_GPIO_Port, M0_ENC_B_Pin}, // hallB_gpio
+            {M0_ENC_Z_GPIO_Port, M0_ENC_Z_Pin}, // hallC_gpio
+            &spi3_arbiter // spi_arbiter
+        }
     }
 };
 
@@ -126,7 +146,8 @@ std::array<Axis, AXIS_COUNT> axes{{
         1, // step_gpio_pin
         2, // dir_gpio_pin
         (osPriority)(osPriorityHigh + (osPriority)1), // thread_priority
-        encoders[0], // encoder
+        encoders[0][0], // encoder
+        encoders[0][1], // encoder2
         sensorless_estimators[0], // sensorless_estimator
         controllers[0], // controller
         motors[0], // motor
@@ -144,7 +165,8 @@ std::array<Axis, AXIS_COUNT> axes{{
         4, // dir_gpio_pin
 #endif
         osPriorityHigh, // thread_priority
-        encoders[1], // encoder
+        encoders[1][0], // encoder
+        encoders[1][1], // encoder2
         sensorless_estimators[1], // sensorless_estimator
         controllers[1], // controller
         motors[1], // motor
